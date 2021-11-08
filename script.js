@@ -36,6 +36,14 @@ class MarkerOperaion
       
     //標示
     this.mark = L.marker([latitude, longitude],{icon: myIcon}).addTo(this.map);   
+    
+    return (this.mark);
+  }
+  
+  
+  GetCurrentMap()
+  {    
+    return this.map
   }
 }
 
@@ -679,9 +687,11 @@ function leafletMarkerBatch(Map,MarkesDetail)
 
 
 
-function ListMyNearBike(map)
+function ListMyNearBike(CurrentPostion)
 {
   console.log('[Function Name]',ListMyNearBike.name)
+  
+  let map = CurrentPostion.GetCurrentMap();
   
   /* 得到目前 所在經緯度*/ 
   navigator.geolocation.getCurrentPosition( function(position)
@@ -691,12 +701,15 @@ function ListMyNearBike(map)
       let Position={
       PositionLon:position.coords.longitude,
       PositionLat:position.coords.latitude,    
-    }
-      
-    let marker = AddCurrentPosition(map,Position);
+    }      
+    
+    //取得目前所在位置 並標示
+    let marker = CurrentPostion.UpdateCurrentPosition(Position.PositionLat,Position.PositionLon)
+    
     MoveCurrentPosition(map,marker,Position)
     
-    map.setView(new L.LatLng(position.coords.latitude,position.coords.longitude), 17);
+    //u62j/4
+    map.setView(new L.LatLng(position.coords.latitude,position.coords.longitude), map.getZoom());
     
     ListBikeNearStop(Position,distance=1000)
     },
@@ -778,6 +791,14 @@ function TestBikAPI(map)
   }
   let map = InitMap(Position);
 
+  let cfg = {
+    map:map,
+    lat:Position.PositionLat, 
+    lng:Position.PositionLon,
+
+  };
+  CurrentPostion = new MarkerOperaion(cfg);
+
   // let marker = AddCurrentPosition(map,Position);
   // Position.PositionLon = 121.567904444;
   // Position.PositionLat = 25.0408578889;
@@ -793,7 +814,7 @@ function TestBikAPI(map)
 
 
   /*列出目前所在位置附近的站點*/
-  ListMyNearBike(map);
+  ListMyNearBike(CurrentPostion);
 
   /*拖動地圖後,列出所在地附近站點*/
   map.on('dragend',function(e)
@@ -814,19 +835,29 @@ function TestBikAPI(map)
 
 //加入按鈕 - 移動到目前位置並搜尋附近車站
 L.easyButton( '<span class="star">&#x1F3AF;</span>', function(){
-  ListMyNearBike(map);
+  ListMyNearBike(CurrentPostion);
 }).addTo(map);
 
 
 
+// testnow.UpdateCurrentPosition(25.06234670660817, 121.64817745388834)
 
-
-let cfg = {
-  map:map,
-  lat:25.047000, 
-  lng:121.51000,
+//每隔6秒更新目前所在位置,並列其附近車輛
+setInterval(function()
+  { 
+    console.log('[Update] Current Location')
+     let map = CurrentPostion.GetCurrentMap();
   
-};
-testnow = new MarkerOperaion(cfg);
-testnow.UpdateCurrentPosition(25.047000,121.51000)
-testnow.UpdateCurrentPosition(25.06234670660817, 121.64817745388834)
+    /* 得到目前 所在經緯度*/ 
+    navigator.geolocation.getCurrentPosition( function(position)
+    {
+        //console.log(position)
+        //console.log(position.coords.latitude,position.coords.longitude)
+        let Position={
+          PositionLon:position.coords.longitude,
+          PositionLat:position.coords.latitude,    
+        }
+      CurrentPostion.UpdateCurrentPosition(Position.PositionLat,Position.PositionLon);
+      ListBikeNearStop(Position,distance=300)
+    });
+  }, 6000);
